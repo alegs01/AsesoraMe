@@ -1,4 +1,4 @@
-import { Session } from "../models/sessionModel.js";
+import Session from "../models/sessionModel.js";
 
 // Función para crear una nueva sesión
 export const createSession = async (req, res) => {

@@ -9,12 +9,7 @@ export const register = async (req, res) => {
       email,
       password,
       role,
-      firstName,
-      lastName,
-      picture,
-      bio,
-      specialities,
-      hourlyRate,
+      profile: { firstName, lastName, picture, bio, specialities, hourlyRate },
     } = req.body;
 
     // Verifica si el usuario ya existe
@@ -28,7 +23,7 @@ export const register = async (req, res) => {
     const hashedPassword = await bcrypt.hash(password, salt);
 
     // Crea el objeto con los datos del nuevo usuario
-    const newUserData = {
+    const newUserData = new User({
       email,
       password: hashedPassword,
       role,
@@ -40,11 +35,10 @@ export const register = async (req, res) => {
         specialities,
         hourlyRate,
       },
-    };
+    });
 
     // Crea y guarda el nuevo usuario en la base de datos
-    const newUser = new User(newUserData);
-    await newUser.save();
+    const newUser = await newUserData.save();
 
     // Responde con éxito al cliente
     res
@@ -60,23 +54,15 @@ export const register = async (req, res) => {
 export const login = async (req, res) => {
   const { email, password } = req.body;
   try {
-    // Busca al usuario por su email
     const user = await User.findOne({ email });
-
-    // Si no existe o las contraseñas no coinciden, retorna un error
     if (!user || !(await bcrypt.compare(password, user.password))) {
       return res.status(401).json({ message: "Invalid credentials" });
     }
-
-    // Si la autenticación es exitosa, genera un token JWT
     const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
-      expiresIn: "1h", // Expira en una hora
+      expiresIn: "1h",
     });
-
-    // Retorna el token al cliente
     res.json({ token });
   } catch (error) {
-    // En caso de error, responde con un mensaje de error
     res.status(400).json({ message: "Error logging in", error });
   }
 };

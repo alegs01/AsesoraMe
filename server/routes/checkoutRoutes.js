@@ -1,10 +1,9 @@
 import express from "express";
 import {
-  createCheckoutSession,
-  createOrder,
-  createCart,
-  getCart,
-  editCart,
+  createSession,
+  getUserSessions,
+  updateSessionStatus,
+  createPaymentLink,
 } from "../controllers/checkoutController.js";
 import { authMiddleware } from "../middleware/authMiddleware.js";
 
@@ -13,82 +12,123 @@ const router = express.Router();
 /**
  * @swagger
  * components:
- *  schemas:
- *    Cart:
- *      type: object
- *      properties:
- *        products:
- *          type: array
- *          items:
- *            type: object
- *            properties:
- *              quantity:
- *                type: number
- *              priceID:
- *                type: string
- *              name:
- *                type: string
- *              priceDescription:
- *                type: string
- *              price:
- *                type: number
- *              img:
- *                type: string
- *              slug:
- *                type: string
- *      required:
- *        - products
- *      example:
- *        products:
- *          - quantity: 1
- *            priceID: "1"
- *            name: "Colacao"
- *            priceDescription: "CLP"
- *            price: 1999
- *            img: "url_imagen"
- *            slug: "colacao"
+ *   schemas:
+ *     Session:
+ *       type: object
+ *       properties:
+ *         advisor:
+ *           type: string
+ *           description: ID del asesor.
+ *         client:
+ *           type: string
+ *           description: ID del cliente.
+ *         startTime:
+ *           type: string
+ *           format: date-time
+ *           description: Fecha y hora de inicio de la sesión.
+ *         duration:
+ *           type: integer
+ *           description: Duración de la sesión en minutos.
+ *         status:
+ *           type: string
+ *           enum: ["scheduled", "completed", "cancelled"]
+ *           description: Estado de la sesión.
+ *         payment:
+ *           type: object
+ *           properties:
+ *             amount:
+ *               type: number
+ *             status:
+ *               type: string
+ *               enum: ["pending", "completed", "refunded"]
+ *             transactionId:
+ *               type: string
+ *         notes:
+ *           type: string
+ *           description: Notas adicionales sobre la sesión.
+ *         rating:
+ *           type: object
+ *           properties:
+ *             score:
+ *               type: number
+ *             review:
+ *               type: string
+ *       required:
+ *         - advisor
+ *         - client
+ *         - startTime
+ *         - duration
+ *       example:
+ *         advisor: "64f8c6ef5f12b8ecf8e2135b"
+ *         client: "64f8c7af5f12b8ecf8e2135c"
+ *         startTime: "2024-12-11T10:00:00Z"
+ *         duration: 60
+ *         status: "scheduled"
+ *         payment:
+ *           amount: 10000
+ *           status: "pending"
+ *           transactionId: "txn_12345"
+ *         notes: "Primera sesión de consulta."
+ *         rating:
+ *           score: 5
+ *           review: "Excelente asesoramiento."
  */
 
 /**
  * @swagger
- * /api/checkout/create-checkout-session:
+ * /api/checkout/session:
+ *   post:
+ *     summary: Crear una nueva sesión
+ *     description: Crea una nueva sesión entre un cliente y un asesor.
+ *     tags: [Sessions]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/Session'
+ *     responses:
+ *       201:
+ *         description: Sesión creada exitosamente.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Session'
+ *       400:
+ *         description: Datos insuficientes o solicitud inválida.
+ */
+router.post("/session", authMiddleware, createSession);
+
+/**
+ * @swagger
+ * /api/checkout/sessions:
  *   get:
- *     summary: Crear sesión de pago simulada SIN MERCADOPAGO
- *     description: Crea una sesión de pago para simular el proceso de checkout.
- *     tags: [Checkout]
+ *     summary: Obtener sesiones del usuario
+ *     description: Devuelve todas las sesiones asociadas al usuario autenticado.
+ *     tags: [Sessions]
  *     security:
  *       - bearerAuth: []
  *     responses:
  *       200:
- *         description: Sesión de pago creada exitosamente.
+ *         description: Lista de sesiones encontradas.
  *         content:
  *           application/json:
  *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                 line_items:
- *                   type: array
- *                   items:
- *                     type: object
- *                     properties:
- *                       name:
- *                         type: string
- *                       quantity:
- *                         type: number
- *                       price:
- *                         type: number
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/Session'
  */
-router.get("/create-checkout-session", authMiddleware, createCheckoutSession);
+router.get("/sessions", authMiddleware, getUserSessions);
 
 /**
  * @swagger
- * /api/checkout/create-order:
- *   post:
- *     summary: Crear una orden de pago con MERCADOPAGO
- *     description: Crea una orden de pago utilizando Mercado Pago y retorna el enlace de pago.
- *     tags: [Checkout]
+ * /api/checkout/session/status:
+ *   patch:
+ *     summary: Actualizar el estado de una sesión
+ *     description: Actualiza el estado de una sesión específica.
+ *     tags: [Sessions]
  *     security:
  *       - bearerAuth: []
  *     requestBody:
@@ -98,144 +138,62 @@ router.get("/create-checkout-session", authMiddleware, createCheckoutSession);
  *           schema:
  *             type: object
  *             properties:
+ *               sessionId:
+ *                 type: string
+ *                 description: ID de la sesión a actualizar.
+ *               status:
+ *                 type: string
+ *                 enum: ["scheduled", "completed", "cancelled"]
+ *                 description: Nuevo estado de la sesión.
+ *     responses:
+ *       200:
+ *         description: Estado de la sesión actualizado exitosamente.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ */
+router.patch("/session/status", authMiddleware, updateSessionStatus);
+
+/**
+ * @swagger
+ * /api/checkout/payment-link:
+ *   post:
+ *     summary: Crear un enlace de pago
+ *     description: Genera un enlace de pago para una sesión específica.
+ *     tags: [Payments]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               sessionId:
+ *                 type: string
+ *                 description: ID de la sesión asociada al pago.
  *               email:
  *                 type: string
- *                 description: Correo electrónico del comprador.
- *               items:
- *                 type: array
- *                 description: Lista de productos para la orden.
- *                 items:
- *                   type: object
- *                   properties:
- *                     title:
- *                       type: string
- *                       description: Nombre del producto.
- *                     quantity:
- *                       type: integer
- *                       description: Cantidad del producto.
- *                     unit_price:
- *                       type: number
- *                       description: Precio unitario del producto.
+ *                 description: Email del usuario.
  *     responses:
- *       200:
- *         description: Orden de pago creada exitosamente.
+ *       201:
+ *         description: Enlace de pago creado exitosamente.
  *         content:
  *           application/json:
  *             schema:
  *               type: object
  *               properties:
- *                 init_point:
+ *                 paymentLink:
  *                   type: string
- *                   description: URL para iniciar el pago en Mercado Pago.
+ *                   description: URL del enlace de pago.
  *       400:
  *         description: Datos insuficientes o solicitud inválida.
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                   description: Mensaje de error relacionado con los datos enviados.
- *       500:
- *         description: Error interno del servidor, formato de JSON incorrecto o token inválido.
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                   description: Mensaje de error general.
- *                 error:
- *                   type: object
- *                   description: Detalle del error.
- *                   properties:
- *                     message:
- *                       type: string
- *                       description: Mensaje del error específico (ej. "invalid_token" o "Bad JSON format").
- *                     status:
- *                       type: integer
- *                       description: Código de estado HTTP relacionado con el error.
- *                     details:
- *                       type: string
- *                       description: Información adicional sobre el error.
  */
-router.post("/create-order", authMiddleware, createOrder);
-
-/**
- * @swagger
- * /api/checkout/create-cart:
- *   post:
- *     summary: Crear un nuevo carrito de compras
- *     description: Crea un carrito de compras en la base de datos.
- *     tags: [Checkout]
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             $ref: '#/components/schemas/Cart'
- *     responses:
- *       200:
- *         description: Carrito creado exitosamente.
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 cart:
- *                   $ref: '#/components/schemas/Cart'
- */
-router.post("/create-cart", authMiddleware, createCart);
-
-/**
- * @swagger
- * /api/checkout/get-cart:
- *   get:
- *     summary: Obtener carrito de compras
- *     description: Obtiene el carrito asociado al usuario autenticado.
- *     tags: [Checkout]
- *     security:
- *       - bearerAuth: []
- *     responses:
- *       200:
- *         description: Carrito de compras encontrado.
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Cart'
- */
-router.get("/get-cart", authMiddleware, getCart);
-
-/**
- * @swagger
- * /api/checkout/edit-cart:
- *   put:
- *     summary: Editar carrito de compras
- *     description: Edita los productos en el carrito de compras del usuario autenticado.
- *     tags: [Checkout]
- *     security:
- *       - bearerAuth: []
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             $ref: '#/components/schemas/Cart'
- *     responses:
- *       200:
- *         description: Carrito de compras actualizado.
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 msg:
- *                   type: string
- *                 updatedCart:
- *                   $ref: '#/components/schemas/Cart'
- */
-router.put("/edit-cart", authMiddleware, editCart);
+router.post("/payment-link", authMiddleware, createPaymentLink);
 
 export default router;

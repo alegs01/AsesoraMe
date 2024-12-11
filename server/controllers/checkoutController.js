@@ -1,82 +1,131 @@
-import { Cart } from "../models/cartModel.js";
-import { User } from "../models/userModel.js";
-import { MercadoPagoConfig, Preference } from "mercadopago";
+import Session from "../models/sessionModel.js";
 import dotenv from "dotenv";
 import axios from "axios";
 
 dotenv.config();
 
-/* const client = new MercadoPagoConfig({
-  accessToken:
-    "APP_USR-1103948530982831-112217-bef9ec8c4c9ae00a98e3fd97a3c92df7-221707668",
-});
+export const createSession = async (req, res) => {
+  const { advisorId, startTime, duration, paymentAmount, notes } = req.body;
 
-const preferences = new Preference(client); */
+  const clientId = req.user?.id; // Obtén el ID del cliente autenticado
 
-// Función para crear una sesión de checkout de prueba
-export const createCheckoutSession = async (req, res) => {
-  // Obtiene el ID del usuario de la solicitud
-  const userID = req.user.id;
-
-  // Encuentra al usuario en la base de datos por su ID
-  const foundUser = await User.findOne({ _id: userID });
-
-  // Encuentra el carrito del usuario en la base de datos y llena los productos
-  const foundCart = await Cart.findById(foundUser.cart).populate({
-    path: "products",
-  });
-
-  // Crea line_items simulados para el proceso de pago
-  const line_items = foundCart.products.map((e) => {
-    return {
-      name: e.name,
-      quantity: e.quantity,
-      price: e.price,
-    };
-  });
-
-  // Respuesta simulada
-  res.json({
-    message: "Sesión de checkout simulada creada.",
-    line_items,
-  });
-};
-
-export const createOrder = async (req, res) => {
-  const { email, items } = req.body;
-
-  // Validar datos de entrada
-  if (!email || !items || items.length === 0) {
+  if (!clientId || !advisorId || !startTime || !duration || !paymentAmount) {
     return res
       .status(400)
-      .json({ message: "Datos insuficientes para crear la orden" });
+      .json({ message: "Datos insuficientes para crear la sesión" });
   }
 
   try {
-    // Crear el body de la solicitud
+    // Crear una nueva sesión
+    const newSession = await Session.create({
+      advisor: advisorId,
+      client: clientId,
+      startTime: new Date(startTime),
+      duration,
+      payment: {
+        amount: paymentAmount,
+        status: "pending",
+      },
+      notes,
+    });
+
+    res.status(201).json({
+      message: "Sesión creada exitosamente",
+      session: newSession,
+    });
+  } catch (error) {
+    res.status(500).json({ message: "Error al crear la sesión", error });
+  }
+};
+
+export const getUserSessions = async (req, res) => {
+  const userId = req.user?.id;
+
+  try {
+    // Buscar sesiones asociadas al usuario (como cliente o asesor)
+    const sessions = await Session.find({
+      $or: [{ client: userId }, { advisor: userId }],
+    }).populate("advisor client");
+
+    res.status(200).json({ sessions });
+  } catch (error) {
+    res
+      .status(500)
+      .json({ message: "Error al obtener las sesiones del usuario", error });
+  }
+};
+
+export const updateSessionStatus = async (req, res) => {
+  const { sessionId, status } = req.body;
+
+  if (!sessionId || !status) {
+    return res
+      .status(400)
+      .json({ message: "Datos insuficientes para actualizar la sesión" });
+  }
+
+  try {
+    // Validar el estado
+    if (!["scheduled", "completed", "cancelled"].includes(status)) {
+      return res.status(400).json({ message: "Estado no válido" });
+    }
+
+    // Actualizar el estado de la sesión
+    const updatedSession = await Session.findByIdAndUpdate(
+      sessionId,
+      { status },
+      { new: true }
+    );
+
+    if (!updatedSession) {
+      return res.status(404).json({ message: "Sesión no encontrada" });
+    }
+
+    res.status(200).json({
+      message: "Estado de la sesión actualizado",
+      session: updatedSession,
+    });
+  } catch (error) {
+    res.status(500).json({ message: "Error al actualizar la sesión", error });
+  }
+};
+
+export const createPaymentLink = async (req, res) => {
+  const { sessionId, email } = req.body;
+
+  if (!sessionId || !email) {
+    return res
+      .status(400)
+      .json({ message: "Datos insuficientes para crear el enlace de pago" });
+  }
+
+  try {
+    // Obtener la sesión para verificar el monto del pago
+    const session = await Session.findById(sessionId);
+
+    if (!session) {
+      return res.status(404).json({ message: "Sesión no encontrada" });
+    }
+
     const preference = {
-      items: items.map((item) => ({
-        title: item.title,
-        quantity: item.quantity,
-        unit_price: item.unit_price,
-      })),
+      items: [
+        {
+          title: "Pago por sesión de asesoría",
+          quantity: 1,
+          unit_price: session.payment.amount,
+        },
+      ],
       payer: {
         email,
       },
       back_urls: {
-        success: "https://www.tu-tienda.com/success",
-        failure: "https://www.tu-tienda.com/failure",
-        pending: "https://www.tu-tienda.com/pending",
+        success: "https://www.tu-plataforma.com/success",
+        failure: "https://www.tu-plataforma.com/failure",
+        pending: "https://www.tu-plataforma.com/pending",
       },
       auto_return: "approved",
     };
 
-    console.log(
-      "Datos enviados a Mercado Pago:",
-      JSON.stringify(preference, null, 2)
-    );
-
-    // Realizar el POST a la API de Mercado Pago
     const response = await axios.post(
       "https://api.mercadopago.com/checkout/preferences",
       preference,
@@ -88,125 +137,12 @@ export const createOrder = async (req, res) => {
       }
     );
 
-    // Devolver el enlace de pago
     res.status(200).json({
       init_point: response.data.init_point,
     });
   } catch (error) {
-    console.error(
-      "Error al crear la preferencia:",
-      error.response?.data || error.message
-    );
-    res.status(500).json({
-      message: "Error al crear la preferencia",
-      error: error.response?.data || error.message,
-    });
-  }
-};
-
-// Función para crear un carrito
-export const createCart = async (req, res) => {
-  const { products } = req.body;
-
-  // Obtener el ID del usuario desde `req.user`
-  const userId = req.user?.id;
-
-  if (!userId) {
-    return res
-      .status(401)
-      .json({ message: "No se encontró el usuario autenticado" });
-  }
-
-  try {
-    // Crea un nuevo carrito
-    const newCart = await Cart.create({ products });
-
-    // Encuentra al usuario y vincula el carrito
-    const updatedUser = await User.findByIdAndUpdate(
-      userId,
-      { cart: newCart._id },
-      { new: true }
-    );
-
-    if (!updatedUser) {
-      return res.status(404).json({ message: "Usuario no encontrado" });
-    }
-
-    res.status(201).json({
-      message: "Carrito creado y asociado al usuario",
-      cart: newCart,
-    });
-  } catch (error) {
-    res.status(500).json({ message: "Error al crear el carrito", error });
-  }
-};
-
-export const getUserCart = async (req, res) => {
-  const { email } = req.query;
-
-  try {
-    const foundUser = await User.findOne({ email }).populate("cart");
-
-    if (!foundUser) {
-      return res.status(404).json({ message: "Usuario no encontrado" });
-    }
-
-    if (!foundUser.cart) {
-      return res
-        .status(404)
-        .json({ message: "El usuario no tiene un carrito asociado" });
-    }
-
-    res.status(200).json({
-      cart: foundUser.cart,
-    });
-  } catch (error) {
     res
       .status(500)
-      .json({ message: "Error al obtener el carrito del usuario", error });
+      .json({ message: "Error al crear el enlace de pago", error });
   }
-};
-
-// Función para obtener un carrito
-export const getCart = async (req, res) => {
-  // Obtiene el ID del usuario de la solicitud
-  const userID = req.user.id;
-
-  // Encuentra al usuario en la base de datos por su ID
-  const foundUser = await User.findOne({ _id: userID });
-
-  // Encuentra el carrito del usuario en la base de datos
-  const foundCart = await Cart.findOne({ _id: foundUser.cart });
-
-  // Envía el carrito encontrado en la respuesta
-  res.json({
-    cart: foundCart,
-  });
-};
-
-// Función para editar un carrito
-export const editCart = async (req, res) => {
-  // Obtiene el ID del usuario de la solicitud
-  const userID = req.user.id;
-
-  // Encuentra al usuario en la base de datos por su ID
-  const foundUser = await User.findOne({ _id: userID });
-
-  // Toma los nuevos datos de los productos de la solicitud
-  const { products } = req.body;
-
-  // Actualiza el carrito con los nuevos datos de los productos
-  const updatedCart = await Cart.findByIdAndUpdate(
-    foundUser.cart,
-    {
-      products,
-    },
-    { new: true }
-  );
-
-  // Envía un mensaje y el carrito actualizado en la respuesta
-  res.json({
-    msg: "Tu carrito fue actualizado",
-    updatedCart,
-  });
 };
