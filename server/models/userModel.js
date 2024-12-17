@@ -19,9 +19,13 @@ const userSchema = new mongoose.Schema(
       enum: ["client", "advisor"],
       required: true,
     },
+    firstName: {
+      type: String,
+    },
+    lastName: {
+      type: String,
+    },
     profile: {
-      firstName: String,
-      lastName: String,
       picture: String,
       bio: String,
       specialities: [String],

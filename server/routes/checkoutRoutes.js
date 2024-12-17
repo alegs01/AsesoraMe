@@ -1,6 +1,5 @@
 import express from "express";
 import {
-  createSession,
   getUserSessions,
   updateSessionStatus,
   createPaymentLink,
@@ -76,38 +75,11 @@ const router = express.Router();
 
 /**
  * @swagger
- * /api/checkout/session:
- *   post:
- *     summary: Crear una nueva sesión
- *     description: Crea una nueva sesión entre un cliente y un asesor.
- *     tags: [Sessions]
- *     security:
- *       - bearerAuth: []
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             $ref: '#/components/schemas/Session'
- *     responses:
- *       201:
- *         description: Sesión creada exitosamente.
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Session'
- *       400:
- *         description: Datos insuficientes o solicitud inválida.
- */
-router.post("/session", authMiddleware, createSession);
-
-/**
- * @swagger
  * /api/checkout/sessions:
  *   get:
- *     summary: Obtener sesiones del usuario
+ *     summary: Obtener sesiones del usuario actual
  *     description: Devuelve todas las sesiones asociadas al usuario autenticado.
- *     tags: [Sessions]
+ *     tags: [Checkout]
  *     security:
  *       - bearerAuth: []
  *     responses:
@@ -128,7 +100,7 @@ router.get("/sessions", authMiddleware, getUserSessions);
  *   patch:
  *     summary: Actualizar el estado de una sesión
  *     description: Actualiza el estado de una sesión específica.
- *     tags: [Sessions]
+ *     tags: [Checkout]
  *     security:
  *       - bearerAuth: []
  *     requestBody:
@@ -194,6 +166,6 @@ router.patch("/session/status", authMiddleware, updateSessionStatus);
  *       400:
  *         description: Datos insuficientes o solicitud inválida.
  */
-router.post("/payment-link", authMiddleware, createPaymentLink);
+router.post("/payment-link", createPaymentLink);
 
 export default router;

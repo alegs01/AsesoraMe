@@ -4,6 +4,7 @@ import {
   login,
   updateUser,
   getAllUsers,
+  logout,
 } from "../controllers/userController.js";
 
 import { authMiddleware } from "../middleware/authMiddleware.js";
@@ -299,5 +300,21 @@ router.get("/", authMiddleware, getAllUsers);
 router.get("/verifytoken", authMiddleware, (req, res) => {
   res.json({ message: "Token is valid" });
 });
+
+/**
+ * @swagger
+ * /api/user/logout:
+ *   post:
+ *     summary: Registrar un nuevo usuario
+ *     tags: [Usuarios]
+ *     responses:
+ *       200:
+ *         description: Sesión cerrada exitosamente
+ *       401:
+ *         description: No autorizado
+ *       500:
+ *        description: Error interno del servidor
+ */
+router.post("/logout", authMiddleware, logout);
 
 export default router;

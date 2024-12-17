@@ -91,9 +91,9 @@ export const updateSessionStatus = async (req, res) => {
 };
 
 export const createPaymentLink = async (req, res) => {
-  const { sessionId, email } = req.body;
+  const { /* sessionId */ email, hourlyRate } = req.body;
 
-  if (!sessionId || !email) {
+  if (/* !sessionId  ||*/ !email) {
     return res
       .status(400)
       .json({ message: "Datos insuficientes para crear el enlace de pago" });
@@ -101,27 +101,28 @@ export const createPaymentLink = async (req, res) => {
 
   try {
     // Obtener la sesión para verificar el monto del pago
-    const session = await Session.findById(sessionId);
+    /*     const session = await Session.findById(sessionId);
 
     if (!session) {
       return res.status(404).json({ message: "Sesión no encontrada" });
-    }
+    } */
 
     const preference = {
       items: [
         {
           title: "Pago por sesión de asesoría",
           quantity: 1,
-          unit_price: session.payment.amount,
+          unit_price: hourlyRate,
+          currency_id: "CLP",
         },
       ],
       payer: {
         email,
       },
       back_urls: {
-        success: "https://www.tu-plataforma.com/success",
-        failure: "https://www.tu-plataforma.com/failure",
-        pending: "https://www.tu-plataforma.com/pending",
+        success: "http://localhost:5173/sessions",
+        failure: "http://localhost:5173/advisors",
+        pending: "http://localhost:5173/advisors",
       },
       auto_return: "approved",
     };
@@ -131,7 +132,7 @@ export const createPaymentLink = async (req, res) => {
       preference,
       {
         headers: {
-          Authorization: `Bearer APP_USR-1103948530982831-112217-bef9ec8c4c9ae00a98e3fd97a3c92df7-221707668`,
+          Authorization: `Bearer APP_USR-8468283417365300-121321-726cb1be23e3e73fa09a982e84e6bf99-221707668`,
           "Content-Type": "application/json",
         },
       }

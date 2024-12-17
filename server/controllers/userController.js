@@ -5,16 +5,13 @@ import bcrypt from "bcryptjs";
 // Función para registrar un nuevo usuario
 export const register = async (req, res) => {
   try {
-    const {
-      email,
-      password,
-      role,
-      profile: { firstName, lastName, picture, bio, specialities, hourlyRate },
-    } = req.body;
+    console.log(req.body);
+    const { email, password, role, firstName, lastName } = req.body;
 
     // Verifica si el usuario ya existe
     const existingUser = await User.findOne({ email });
     if (existingUser) {
+      console.log(existingUser);
       return res.status(400).json({ message: "Email already in use" });
     }
 
@@ -27,19 +24,13 @@ export const register = async (req, res) => {
       email,
       password: hashedPassword,
       role,
-      profile: {
-        firstName,
-        lastName,
-        picture,
-        bio,
-        specialities,
-        hourlyRate,
-      },
+      firstName,
+      lastName,
     });
 
     // Crea y guarda el nuevo usuario en la base de datos
     const newUser = await newUserData.save();
-
+    console.log(newUserData);
     // Responde con éxito al cliente
     res
       .status(201)
@@ -52,8 +43,8 @@ export const register = async (req, res) => {
 
 // Función para iniciar sesión
 export const login = async (req, res) => {
-  const { email, password } = req.body;
   try {
+    const { email, password } = req.body;
     const user = await User.findOne({ email });
     if (!user || !(await bcrypt.compare(password, user.password))) {
       return res.status(401).json({ message: "Invalid credentials" });
@@ -61,7 +52,7 @@ export const login = async (req, res) => {
     const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
       expiresIn: "1h",
     });
-    res.json({ token });
+    res.json({ token: token, user: user });
   } catch (error) {
     res.status(400).json({ message: "Error logging in", error });
   }
@@ -142,5 +133,23 @@ export const getAllUsers = async (req, res) => {
       message: "Error al obtener los usuarios",
       error,
     });
+  }
+};
+
+export const logout = async (req, res) => {
+  try {
+    const token = req.headers.authorization.split(" ")[1];
+    const decoded = jwt.verify(token, "tu_secreto"); // Reemplaza 'tu_secreto' por tu clave secreta
+
+    // Actualiza la fecha de expiración del token en la base de datos
+    await User.findOneAndUpdate(
+      { _id: decoded.userId },
+      { tokenExpiration: Date.now() }
+    );
+
+    res.json({ message: "Sesión cerrada correctamente" });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Error al cerrar sesión" });
   }
 };

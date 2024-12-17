@@ -109,15 +109,11 @@ const router = express.Router();
  *                 format: date-time
  *               duration:
  *                 type: number
- *               status:
- *                 type: string
  *               payment:
  *                 type: object
  *                 properties:
  *                   amount:
  *                     type: number
- *                   status:
- *                     type: string
  *                   transactionId:
  *                     type: string
  *               notes:

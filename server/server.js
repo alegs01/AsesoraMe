@@ -24,9 +24,7 @@ app.use("/api/session", sessionRoutes);
 
 // Ruta raíz
 app.get("/", (req, res) => {
-  res.send(
-    "El servidor está en funcionamiento. Puedes consultar la documentación de la API en /api-docs"
-  );
+  res.send("El servidor está funcionando correctamente");
 });
 
 // Swagger Docs
