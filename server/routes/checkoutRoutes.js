@@ -1,8 +1,9 @@
 import express from "express";
 import {
-  getUserSessions,
-  updateSessionStatus,
-  createPaymentLink,
+  addToCart,
+  getCart,
+  removeFromCart,
+  createCartPaymentLink,
 } from "../controllers/checkoutController.js";
 import { authMiddleware } from "../middleware/authMiddleware.js";
 
@@ -12,95 +13,99 @@ const router = express.Router();
  * @swagger
  * components:
  *   schemas:
- *     Session:
+ *     CartItem:
  *       type: object
  *       properties:
- *         advisor:
+ *         sessionId:
  *           type: string
- *           description: ID del asesor.
- *         client:
- *           type: string
- *           description: ID del cliente.
- *         startTime:
- *           type: string
- *           format: date-time
- *           description: Fecha y hora de inicio de la sesión.
- *         duration:
+ *           description: ID de la sesión agregada al carrito.
+ *         quantity:
  *           type: integer
- *           description: Duración de la sesión en minutos.
- *         status:
- *           type: string
- *           enum: ["scheduled", "completed", "cancelled"]
- *           description: Estado de la sesión.
- *         payment:
- *           type: object
- *           properties:
- *             amount:
- *               type: number
- *             status:
- *               type: string
- *               enum: ["pending", "completed", "refunded"]
- *             transactionId:
- *               type: string
- *         notes:
- *           type: string
- *           description: Notas adicionales sobre la sesión.
- *         rating:
- *           type: object
- *           properties:
- *             score:
- *               type: number
- *             review:
- *               type: string
+ *           description: Cantidad de la sesión.
  *       required:
- *         - advisor
- *         - client
- *         - startTime
- *         - duration
+ *         - sessionId
+ *         - quantity
  *       example:
- *         advisor: "64f8c6ef5f12b8ecf8e2135b"
- *         client: "64f8c7af5f12b8ecf8e2135c"
- *         startTime: "2024-12-11T10:00:00Z"
- *         duration: 60
- *         status: "scheduled"
- *         payment:
- *           amount: 10000
- *           status: "pending"
- *           transactionId: "txn_12345"
- *         notes: "Primera sesión de consulta."
- *         rating:
- *           score: 5
- *           review: "Excelente asesoramiento."
+ *         sessionId: "64f8c6ef5f12b8ecf8e2135b"
+ *         quantity: 2
+ *     Cart:
+ *       type: object
+ *       properties:
+ *         userId:
+ *           type: string
+ *           description: ID del usuario propietario del carrito.
+ *         items:
+ *           type: array
+ *           items:
+ *             $ref: '#/components/schemas/CartItem'
+ *         totalPrice:
+ *           type: number
+ *           description: Precio total de las sesiones en el carrito.
+ *       required:
+ *         - userId
+ *         - items
+ *       example:
+ *         userId: "64f8c7af5f12b8ecf8e2135c"
+ *         items:
+ *           - sessionId: "64f8c6ef5f12b8ecf8e2135b"
+ *             quantity: 2
  */
 
 /**
  * @swagger
- * /api/checkout/sessions:
+ * /api/checkout/cart:
  *   get:
- *     summary: Obtener sesiones del usuario actual
- *     description: Devuelve todas las sesiones asociadas al usuario autenticado.
- *     tags: [Checkout]
+ *     summary: Obtener el carrito del usuario
+ *     description: Devuelve el carrito actual del usuario autenticado.
+ *     tags: [Cart]
  *     security:
  *       - bearerAuth: []
  *     responses:
  *       200:
- *         description: Lista de sesiones encontradas.
+ *         description: Carrito del usuario obtenido exitosamente.
  *         content:
  *           application/json:
  *             schema:
- *               type: array
- *               items:
- *                 $ref: '#/components/schemas/Session'
+ *               $ref: '#/components/schemas/Cart'
+ *       404:
+ *         description: Carrito no encontrado.
  */
-router.get("/sessions", authMiddleware, getUserSessions);
+router.get("/cart", authMiddleware, getCart);
 
 /**
  * @swagger
- * /api/checkout/session/status:
- *   patch:
- *     summary: Actualizar el estado de una sesión
- *     description: Actualiza el estado de una sesión específica.
- *     tags: [Checkout]
+ * /api/checkout/cart:
+ *   post:
+ *     summary: Agregar una sesion al carrito
+ *     description: Añade una sesion al carrito del usuario autenticado.
+ *     tags: [Cart]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/CartItem'
+ *     responses:
+ *       201:
+ *         description: Sesion agregada al carrito exitosamente.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Cart'
+ *       400:
+ *         description: Datos insuficientes o solicitud inválida.
+ */
+router.post("/cart", authMiddleware, addToCart);
+
+/**
+ * @swagger
+ * /api/checkout/cart:
+ *   delete:
+ *     summary: Eliminar un sesion del carrito
+ *     description: Elimina un sesion específico del carrito del usuario autenticado.
+ *     tags: [Cart]
  *     security:
  *       - bearerAuth: []
  *     requestBody:
@@ -112,30 +117,29 @@ router.get("/sessions", authMiddleware, getUserSessions);
  *             properties:
  *               sessionId:
  *                 type: string
- *                 description: ID de la sesión a actualizar.
- *               status:
- *                 type: string
- *                 enum: ["scheduled", "completed", "cancelled"]
- *                 description: Nuevo estado de la sesión.
+ *                 description: ID de la sesion a eliminar.
+ *             required:
+ *               - sessionId
+ *             example:
+ *               sessionId: "64f8c6ef5f12b8ecf8e2135b"
  *     responses:
  *       200:
- *         description: Estado de la sesión actualizado exitosamente.
+ *         description: sesion eliminada del carrito exitosamente.
  *         content:
  *           application/json:
  *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
+ *               $ref: '#/components/schemas/Cart'
+ *       404:
+ *         description: sesion no encontrada en el carrito.
  */
-router.patch("/session/status", authMiddleware, updateSessionStatus);
+router.delete("/cart", authMiddleware, removeFromCart);
 
 /**
  * @swagger
  * /api/checkout/payment-link:
  *   post:
  *     summary: Crear un enlace de pago
- *     description: Genera un enlace de pago para una sesión específica.
+ *     description: Genera un enlace de pago para el contenido del carrito del usuario.
  *     tags: [Payments]
  *     security:
  *       - bearerAuth: []
@@ -146,15 +150,16 @@ router.patch("/session/status", authMiddleware, updateSessionStatus);
  *           schema:
  *             type: object
  *             properties:
- *               sessionId:
- *                 type: string
- *                 description: ID de la sesión asociada al pago.
  *               email:
  *                 type: string
- *                 description: Email del usuario.
+ *                 description: Correo electrónico del usuario.
+ *             required:
+ *               - email
+ *             example:
+ *               email: "usuario@correo.com"
  *     responses:
  *       201:
- *         description: Enlace de pago creado exitosamente.
+ *         description: Enlace de pago generado exitosamente.
  *         content:
  *           application/json:
  *             schema:
@@ -166,6 +171,6 @@ router.patch("/session/status", authMiddleware, updateSessionStatus);
  *       400:
  *         description: Datos insuficientes o solicitud inválida.
  */
-router.post("/payment-link", createPaymentLink);
+router.post("/payment-link", authMiddleware, createCartPaymentLink);
 
 export default router;

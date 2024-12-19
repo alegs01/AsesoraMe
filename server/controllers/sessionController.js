@@ -4,7 +4,8 @@ import Session from "../models/sessionModel.js";
 export const createSession = async (req, res) => {
   try {
     // Desestructuración de los datos recibidos en el cuerpo de la solicitud
-    const { advisor, client, startTime, duration, payment, notes } = req.body;
+    const { advisor, client, startTime, duration, payment, notes, price } =
+      req.body;
 
     // Crea una nueva sesión en la base de datos con los datos proporcionados
     const session = await Session.create({
@@ -14,6 +15,7 @@ export const createSession = async (req, res) => {
       duration,
       payment,
       notes,
+      price,
     });
 
     // Respuesta exitosa con la sesión creada
@@ -85,7 +87,8 @@ export const updateSession = async (req, res) => {
   const { id } = req.params;
 
   // Desestructura los datos recibidos en el cuerpo de la solicitud
-  const { startTime, duration, status, payment, notes, rating } = req.body;
+  const { startTime, duration, status, payment, notes, rating, price } =
+    req.body;
 
   try {
     // Prepara los datos de actualización
@@ -97,6 +100,7 @@ export const updateSession = async (req, res) => {
     if (payment) updateData.payment = payment;
     if (notes) updateData.notes = notes;
     if (rating) updateData.rating = rating;
+    if (price) updateData.price = price;
 
     // Actualiza la sesión con los nuevos datos
     const updatedSession = await Session.findByIdAndUpdate(id, updateData, {

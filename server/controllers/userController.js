@@ -135,21 +135,3 @@ export const getAllUsers = async (req, res) => {
     });
   }
 };
-
-export const logout = async (req, res) => {
-  try {
-    const token = req.headers.authorization.split(" ")[1];
-    const decoded = jwt.verify(token, "tu_secreto"); // Reemplaza 'tu_secreto' por tu clave secreta
-
-    // Actualiza la fecha de expiración del token en la base de datos
-    await User.findOneAndUpdate(
-      { _id: decoded.userId },
-      { tokenExpiration: Date.now() }
-    );
-
-    res.json({ message: "Sesión cerrada correctamente" });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: "Error al cerrar sesión" });
-  }
-};
