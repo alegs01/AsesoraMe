@@ -31,22 +31,16 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const Logout = async () => {
+  const Logout = () => {
     try {
-      const token = getUserToken();
-      if (token) {
-        await axios.post(
-          "http://localhost/api/user/logout",
-          {},
-          {
-            headers: { Authorization: `Bearer ${token}` },
-          }
-        );
-      }
+      // Eliminar el token del localStorage
       localStorage.removeItem("token");
+
+      // Limpiar el estado del usuario
       setUser(null);
     } catch (error) {
-      return error.response.data.message;
+      console.error("Error al cerrar sesión:", error);
+      return "Error al cerrar sesión.";
     }
   };
 

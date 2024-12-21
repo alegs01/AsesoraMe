@@ -20,10 +20,12 @@ export default function Register() {
       password: data.password,
       role: userType,
     });
+
     if (error) {
-      console.error(error);
+      setErrorMessage(error); // Actualizar el estado con el mensaje de error
       return;
     }
+
     alert("Registrado");
     navigate("/login");
   };

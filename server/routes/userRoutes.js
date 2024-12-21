@@ -4,6 +4,9 @@ import {
   login,
   updateUser,
   getAllUsers,
+  profile,
+  userById,
+  getAdvisors,
 } from "../controllers/userController.js";
 
 import { authMiddleware } from "../middleware/authMiddleware.js";
@@ -281,6 +284,96 @@ router.put("/update/:id", authMiddleware, updateUser);
  *         description: Error del servidor al obtener los usuarios
  */
 router.get("/", authMiddleware, getAllUsers);
+
+router.get("/id/:id", authMiddleware, userById);
+
+router.get("/advisors", authMiddleware, getAdvisors);
+
+/**
+ * @swagger
+ * /api/user/profile:
+ *   put:
+ *     summary: Actualizar el perfil del usuario autenticado
+ *     tags: [Usuarios]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               firstName:
+ *                 type: string
+ *                 description: Primer nombre del usuario
+ *               lastName:
+ *                 type: string
+ *                 description: Apellido del usuario
+ *               avatar:
+ *                 type: string
+ *                 description: URL de la foto de perfil
+ *               bio:
+ *                 type: string
+ *                 description: Biografía del usuario
+ *               specialties:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                 description: Especialidades del usuario
+ *               hourlyRate:
+ *                 type: number
+ *                 description: Tarifa por hora del usuario (si aplica)
+ *     responses:
+ *       200:
+ *         description: Perfil actualizado con éxito
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   description: Mensaje de éxito
+ *                 user:
+ *                   type: object
+ *                   properties:
+ *                     _id:
+ *                       type: string
+ *                       description: ID del usuario
+ *                     firstName:
+ *                       type: string
+ *                       description: Primer nombre del usuario
+ *                     lastName:
+ *                       type: string
+ *                       description: Apellido del usuario
+ *                     profile:
+ *                       type: object
+ *                       properties:
+ *                         picture:
+ *                           type: string
+ *                           description: URL de la foto de perfil
+ *                         bio:
+ *                           type: string
+ *                           description: Biografía del usuario
+ *                         specialities:
+ *                           type: array
+ *                           items:
+ *                             type: string
+ *                           description: Especialidades del usuario
+ *                         hourlyRate:
+ *                           type: number
+ *                           description: Tarifa por hora del usuario
+ *       400:
+ *         description: Datos de solicitud no válidos
+ *       401:
+ *         description: Acceso no autorizado
+ *       404:
+ *         description: Usuario no encontrado
+ *       500:
+ *         description: Error al actualizar el perfil
+ */
+router.put("/profile", authMiddleware, profile);
 
 /**
  * @swagger

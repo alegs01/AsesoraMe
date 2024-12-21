@@ -1,8 +1,8 @@
-import { Link, useNavigate } from 'react-router-dom';
-import { useAuth } from '../../context/AuthContext';
+import { Link, useNavigate } from "react-router-dom";
+import { useAuth } from "../../context/AuthContext";
 
 export default function Navbar() {
-  const { user, logout } = useAuth();
+  const { user, Logout } = useAuth();
   const navigate = useNavigate();
   return (
     <nav className="bg-white shadow-lg">
@@ -10,7 +10,9 @@ export default function Navbar() {
         <div className="flex justify-between h-16">
           <div className="flex">
             <Link to="/" className="flex-shrink-0 flex items-center">
-              <span className="text-xl font-bold text-indigo-600">Asesora<strong>Me</strong></span>
+              <span className="text-xl font-bold text-indigo-600">
+                Asesora<strong>Me</strong>
+              </span>
             </Link>
             <div className="hidden sm:ml-6 sm:flex sm:space-x-8">
               <Link
@@ -31,7 +33,7 @@ export default function Navbar() {
                   Perfil
                 </Link>
                 <button
-                  onClick={() => logout(navigate)}
+                  onClick={() => Logout(navigate("/"))}
                   className="bg-indigo-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-indigo-700"
                 >
                   Cerrar Sesión

@@ -28,7 +28,7 @@ const userSchema = new mongoose.Schema(
     profile: {
       picture: String,
       bio: String,
-      specialities: [String],
+      specialties: [String],
       hourlyRate: Number,
       rating: {
         type: Number,
@@ -38,6 +38,15 @@ const userSchema = new mongoose.Schema(
         type: Number,
         default: 0,
       },
+    },
+    availability: {
+      monday: [String], // Ejemplo: ["09:00", "10:00", "11:00"]
+      tuesday: [String],
+      wednesday: [String],
+      thursday: [String],
+      friday: [String],
+      saturday: [String],
+      sunday: [String],
     },
     googleId: String,
     createdAt: {
@@ -52,9 +61,9 @@ const userSchema = new mongoose.Schema(
 
 // Hash password before saving
 userSchema.pre("save", async function (next) {
-  if (!this.isModified("contraseña")) return next();
+  if (!this.isModified("password")) return next();
   const salt = await bcrypt.genSalt(10);
-  this.contraseña = bcrypt.hash(this.contraseña, salt);
+  this.password = await bcrypt.hash(this.password, salt);
 });
 
 export const User = mongoose.model("User", userSchema);

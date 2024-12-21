@@ -68,8 +68,9 @@ export const updateUser = async (req, res) => {
     password,
     picture,
     bio,
-    specialities,
+    specialties,
     hourlyRate,
+    availability,
   } = req.body;
 
   try {
@@ -92,8 +93,11 @@ export const updateUser = async (req, res) => {
     // Actualiza los campos de perfil que corresponden
     if (picture) updateData.profile.picture = picture;
     if (bio) updateData.profile.bio = bio;
-    if (specialities) updateData.profile.specialities = specialities;
+    if (specialties) updateData.profile.specialties = specialties;
     if (hourlyRate) updateData.profile.hourlyRate = hourlyRate;
+
+    // Actualiza el campo disponibilidad
+    if (availability) updateData.availability = availability;
 
     // Busca y actualiza el usuario en la base de datos
     const updatedUser = await User.findByIdAndUpdate(id, updateData, {
@@ -112,6 +116,7 @@ export const updateUser = async (req, res) => {
       .json({ message: "User updated successfully", user: updatedUser });
   } catch (error) {
     // En caso de error, responde con un mensaje de error
+    console.error("Error updating user:", error);
     res.status(400).json({ message: "Error updating user", error });
   }
 };
@@ -133,5 +138,83 @@ export const getAllUsers = async (req, res) => {
       message: "Error al obtener los usuarios",
       error,
     });
+  }
+};
+
+export const profile = async (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    const {
+      firstName,
+      lastName,
+      avatar,
+      bio,
+      specialties,
+      hourlyRate,
+      availability,
+    } = req.body;
+
+    // Actualizar los campos del perfil del usuario
+    const updatedUser = await User.findByIdAndUpdate(
+      userId,
+      {
+        firstName,
+        lastName,
+        "profile.picture": avatar,
+        "profile.bio": bio,
+        "profile.specialties": specialties,
+        "profile.hourlyRate": hourlyRate,
+        availability,
+      },
+      { new: true }
+    );
+
+    if (!updatedUser) {
+      return res.status(404).json({ message: "Usuario no encontrado" });
+    }
+
+    res.json({ message: "Perfil actualizado con éxito", user: updatedUser });
+  } catch (error) {
+    console.error("Error al actualizar el perfil:", error);
+    res.status(500).json({ message: "Error al actualizar el perfil" });
+  }
+};
+
+export const userById = async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    // Buscar usuario por ID
+    const user = await User.findById(id);
+
+    // Verificar si existe el usuario
+    if (!user) {
+      return res.status(404).json({ message: "Usuario no encontrado" });
+    }
+
+    // Devolver el usuario
+    res.status(200).json(user);
+  } catch (error) {
+    console.error("Error fetching user:", error);
+    res.status(500).json({ message: "Error al obtener usuario" });
+  }
+};
+
+// Controlador para obtener usuarios con rol "advisor"
+export const getAdvisors = async (req, res) => {
+  try {
+    // Obtener usuarios con rol "advisor"
+    const advisors = await User.find({ role: "advisor" });
+
+    if (!advisors || advisors.length === 0) {
+      return res.status(404).json({ message: "No se encontraron asesores." });
+    }
+
+    // Devolver todos los datos de los asesores
+    res.status(200).json(advisors);
+  } catch (error) {
+    console.error("Error al obtener asesores:", error);
+    res.status(500).json({ message: "Error interno del servidor" });
   }
 };
