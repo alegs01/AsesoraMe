@@ -285,8 +285,80 @@ router.put("/update/:id", authMiddleware, updateUser);
  */
 router.get("/", authMiddleware, getAllUsers);
 
+/**
+ * @swagger
+ * /api/user/id/{id}:
+ *   get:
+ *     summary: Obtener información de un usuario por ID
+ *     tags: [Usuarios]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           description: ID único del usuario
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Información del usuario obtenida con éxito
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 _id:
+ *                   type: string
+ *                   description: ID del usuario
+ *                 email:
+ *                   type: string
+ *                   description: Correo del usuario
+ *                 role:
+ *                   type: string
+ *                   description: Rol del usuario
+ *                 profile:
+ *                   type: object
+ *                   description: Detalles del perfil del usuario
+ *       401:
+ *         description: Acceso no autorizado
+ *       404:
+ *         description: Usuario no encontrado
+ *       500:
+ *         description: Error al obtener la información del usuario
+ */
 router.get("/id/:id", authMiddleware, userById);
 
+/**
+ * @swagger
+ * /api/user/advisors:
+ *   get:
+ *     summary: Obtener lista de usuarios con rol de asesor
+ *     tags: [Usuarios]
+ *     responses:
+ *       200:
+ *         description: Lista de asesores obtenida con éxito
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ *                 properties:
+ *                   _id:
+ *                     type: string
+ *                     description: ID del asesor
+ *                   email:
+ *                     type: string
+ *                     description: Correo del asesor
+ *                   profile:
+ *                     type: object
+ *                     description: Detalles del perfil del asesor
+ *       404:
+ *         description: No se encontraron asesores
+ *       500:
+ *         description: Error al obtener la lista de asesores
+ */
 router.get("/advisors", getAdvisors);
 
 /**

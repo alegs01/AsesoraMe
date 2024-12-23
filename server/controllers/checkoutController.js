@@ -5,46 +5,41 @@ import axios from "axios";
 
 dotenv.config();
 
-// Agregar una sesión al carrito
 export const addToCart = async (req, res) => {
   const { advisorId, clientId, date, time, duration, rate } = req.body;
 
-  // Validar datos necesarios
   if (!advisorId || !clientId || !date || !time || !duration || !rate) {
     return res.status(400).json({ message: "Faltan datos obligatorios" });
   }
 
   try {
-    // Buscar o crear un carrito para el usuario
+    // Buscar o crear el carrito del usuario
     let cart = await Cart.findOne({ user: clientId });
 
     if (!cart) {
       cart = await Cart.create({ user: clientId, items: [], totalPrice: 0 });
     }
 
-    // Verificar si ya existe una entrada similar en el carrito
-    const isSessionInCart = cart.items.some(
-      (item) =>
-        item.date === date &&
-        item.time === time &&
-        item.sessionId.toString() === advisorId
-    );
+    // Crear una nueva sesión y guardar su ID en el ítem del carrito
+    const newSession = await Session.create({
+      advisor: advisorId,
+      client: clientId,
+      date,
+      time,
+      duration,
+      payment: { amount: rate, status: "pending" },
+    });
 
-    if (isSessionInCart) {
-      return res
-        .status(400)
-        .json({ message: "La sesión ya está en el carrito" });
-    }
-
-    // Agregar la nueva entrada al carrito
-    cart.items.push({
-      sessionId: advisorId,
+    const newItem = {
+      sessionId: newSession._id,
       date,
       time,
       duration,
       rate,
       quantity: 1,
-    });
+    };
+
+    cart.items.push(newItem);
 
     // Recalcular el precio total
     cart.totalPrice = cart.items.reduce(
@@ -54,9 +49,14 @@ export const addToCart = async (req, res) => {
 
     await cart.save();
 
+    // Popula el campo sessionId del ítem recién agregado
+    const populatedCart = await Cart.findById(cart._id).populate(
+      "items.sessionId"
+    );
+
     res.status(200).json({
       message: "Reserva añadida al carrito",
-      cart,
+      cart: populatedCart,
     });
   } catch (error) {
     console.error("Error al agregar al carrito:", error);
@@ -71,10 +71,11 @@ export const getCart = async (req, res) => {
   const userId = req.user?.id;
 
   try {
-    // Buscar el carrito del usuario
-    const cart = await Cart.findOne({ user: userId }).populate(
-      "items.sessionId"
-    );
+    // Poblar los datos de sessionId
+    const cart = await Cart.findOne({ user: userId }).populate({
+      path: "items.sessionId",
+      select: "advisor client date time duration rate", // Selecciona los campos necesarios
+    });
 
     if (!cart) {
       return res.status(404).json({ message: "Carrito no encontrado" });
@@ -82,17 +83,19 @@ export const getCart = async (req, res) => {
 
     res.status(200).json({ cart });
   } catch (error) {
+    console.error("Error al obtener el carrito:", error);
     res.status(500).json({ message: "Error al obtener el carrito", error });
   }
 };
 
 // Eliminar una sesión del carrito
 export const removeFromCart = async (req, res) => {
-  const sessionId = req.body.sessionId || req.params.id;
+  const sessionId = req.params.id;
+  const userId = req.user.id; // Asegúrate de que el middleware establece req.user
 
   console.log("Request received to remove from cart");
-  console.log("UserId:", userId); // Verificar que userId se esté configurando correctamente
   console.log("SessionId:", sessionId); // Verificar que sessionId se recibe correctamente
+  console.log("UserId:", userId); // Verificar que userId se obtiene correctamente
 
   try {
     // Buscar el carrito del usuario

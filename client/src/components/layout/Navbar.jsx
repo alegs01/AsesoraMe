@@ -25,13 +25,15 @@ export default function Navbar() {
                 Encuentra Asesores
               </Link>
 
-              {/* Actualiza el número del carrito */}
-              <Link
-                to="/cart"
-                className="text-gray-900 inline-flex items-center px-1 pt-1 border-b-2 border-transparent hover:border-indigo-500"
-              >
-                Carrito ({cart.length})
-              </Link>
+              {/* Muestra el carrito solo si el usuario está autenticado */}
+              {user && (
+                <Link
+                  to="/cart"
+                  className="text-gray-900 inline-flex items-center px-1 pt-1 border-b-2 border-transparent hover:border-indigo-500"
+                >
+                  Carrito ({cart.length})
+                </Link>
+              )}
             </div>
           </div>
           <div className="hidden sm:ml-6 sm:flex sm:items-center sm:space-x-4">

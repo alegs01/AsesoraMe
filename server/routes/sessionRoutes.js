@@ -7,6 +7,7 @@ import {
   deleteSession,
 } from "../controllers/sessionController.js";
 import { authMiddleware } from "../middleware/authMiddleware.js";
+import { preventDuplicateSessions } from "../middleware/duplicateMiddleware.js";
 
 const router = express.Router();
 
@@ -133,7 +134,7 @@ const router = express.Router();
  *       400:
  *         description: Error al crear la sesión
  */
-router.post("/create", authMiddleware, createSession);
+router.post("/create", preventDuplicateSessions, authMiddleware, createSession);
 
 /**
  * @swagger

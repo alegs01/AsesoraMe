@@ -1,49 +1,51 @@
 import Session from "../models/sessionModel.js";
+import { Cart } from "../models/cartModel.js";
 
-// Función para crear una nueva sesión
+// Crear una nueva sesión
 export const createSession = async (req, res) => {
+  console.log("Creando sesión...");
   try {
-    // Desestructuración de los datos recibidos en el cuerpo de la solicitud
-    const { advisor, client, startTime, duration, payment, notes, price } =
+    const { advisor, client, date, time, duration, payment, notes, price } =
       req.body;
 
-    // Crea una nueva sesión en la base de datos con los datos proporcionados
+    // Validar campos obligatorios
+    if (!advisor || !client || !date || !time || !duration) {
+      return res.status(400).json({ message: "Faltan datos obligatorios" });
+    }
+
+    // Crear la sesión
     const session = await Session.create({
       advisor,
       client,
-      startTime,
+      date,
+      time,
       duration,
       payment,
       notes,
       price,
     });
 
-    // Respuesta exitosa con la sesión creada
     res.status(201).json({
       message: "Sesión creada con éxito",
       session,
     });
   } catch (error) {
-    // Si ocurre un error, se retorna un mensaje con el error
     res.status(400).json({ message: "Error al crear la sesión", error });
   }
 };
 
-// Función para obtener todas las sesiones
+// Obtener todas las sesiones
 export const getAllSessions = async (req, res) => {
   try {
-    // Busca todas las sesiones en la base de datos y pobla las referencias de los usuarios (asesores y clientes)
     const sessions = await Session.find()
-      .populate("advisor", "firstName lastName email") // Pobla la referencia del asesor
-      .populate("client", "firstName lastName email"); // Pobla la referencia del cliente
+      .populate("advisor", "firstName lastName email")
+      .populate("client", "firstName lastName email");
 
-    // Respuesta exitosa con la lista de sesiones obtenida
     res.status(200).json({
       message: "Lista de sesiones obtenida con éxito",
       sessions,
     });
   } catch (error) {
-    // Si ocurre un error al obtener las sesiones, se retorna un mensaje de error
     res.status(500).json({
       message: "Error al obtener las sesiones",
       error,
@@ -51,29 +53,24 @@ export const getAllSessions = async (req, res) => {
   }
 };
 
-// Función para obtener una sesión específica por su ID
+// Obtener una sesión específica por su ID
 export const getSession = async (req, res) => {
   try {
-    // Extrae el ID de la sesión desde los parámetros de la URL
     const { id } = req.params;
 
-    // Busca la sesión por su ID y pobla las referencias de los usuarios (asesores y clientes)
     const session = await Session.findById(id)
       .populate("advisor", "firstName lastName email")
       .populate("client", "firstName lastName email");
 
-    // Si la sesión no existe, se devuelve un error
     if (!session) {
       return res.status(404).json({ message: "Sesión no encontrada" });
     }
 
-    // Respuesta exitosa con la sesión encontrada
     res.status(200).json({
       message: "Sesión encontrada con éxito",
       session,
     });
   } catch (error) {
-    // Si ocurre un error al obtener la sesión, se retorna un mensaje de error
     res.status(500).json({
       message: "Error al obtener la sesión",
       error,
@@ -81,20 +78,17 @@ export const getSession = async (req, res) => {
   }
 };
 
-// Función para actualizar una sesión existente
+// Actualizar una sesión existente
 export const updateSession = async (req, res) => {
-  // Extrae el ID de la sesión desde los parámetros de la URL
   const { id } = req.params;
-
-  // Desestructura los datos recibidos en el cuerpo de la solicitud
-  const { startTime, duration, status, payment, notes, rating, price } =
+  const { date, time, duration, status, payment, notes, rating, price } =
     req.body;
 
   try {
-    // Prepara los datos de actualización
     const updateData = {};
 
-    if (startTime) updateData.startTime = startTime;
+    if (date) updateData.date = date;
+    if (time) updateData.time = time;
     if (duration) updateData.duration = duration;
     if (status) updateData.status = status;
     if (payment) updateData.payment = payment;
@@ -102,24 +96,20 @@ export const updateSession = async (req, res) => {
     if (rating) updateData.rating = rating;
     if (price) updateData.price = price;
 
-    // Actualiza la sesión con los nuevos datos
     const updatedSession = await Session.findByIdAndUpdate(id, updateData, {
-      new: true, // Retorna la sesión actualizada
-      runValidators: true, // Aplica validaciones al actualizar
+      new: true,
+      runValidators: true,
     });
 
-    // Si no se encuentra la sesión, se retorna un error
     if (!updatedSession) {
       return res.status(404).json({ message: "Sesión no encontrada" });
     }
 
-    // Respuesta exitosa con la sesión actualizada
     res.status(200).json({
       message: "Sesión actualizada con éxito",
       session: updatedSession,
     });
   } catch (error) {
-    // Si ocurre un error al actualizar la sesión, se retorna un mensaje de error
     res.status(400).json({
       message: "Error al actualizar la sesión",
       error,
@@ -127,29 +117,31 @@ export const updateSession = async (req, res) => {
   }
 };
 
-// Función para eliminar una sesión
+// Eliminar una sesión
 export const deleteSession = async (req, res) => {
   try {
-    // Extrae el ID de la sesión desde los parámetros de la URL
-    const { id } = req.params;
+    const { id } = req.params; // ID de la sesión a eliminar
 
-    // Elimina la sesión con el ID proporcionado
+    // Elimina la sesión del modelo Session
     const deletedSession = await Session.findByIdAndDelete(id);
 
-    // Si no se encuentra la sesión, se retorna un error
     if (!deletedSession) {
       return res.status(404).json({ message: "Sesión no encontrada" });
     }
 
-    // Respuesta exitosa con la sesión eliminada
+    // Vaciar el carrito asociado al cliente de la sesión eliminada
+    await Cart.findOneAndUpdate(
+      { user: deletedSession.client },
+      { items: [], totalPrice: 0 }
+    );
+
     res.status(200).json({
-      message: "Sesión eliminada con éxito",
-      deletedSession,
+      message: "Sesión eliminada y carrito vaciado",
     });
   } catch (error) {
-    // Si ocurre un error al eliminar la sesión, se retorna un mensaje de error
+    console.error("Error al eliminar la sesión:", error);
     res.status(500).json({
-      message: "Error al eliminar la sesión",
+      message: "Error al eliminar la sesión y vaciar el carrito",
       error: error.message,
     });
   }

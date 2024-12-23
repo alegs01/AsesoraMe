@@ -3,13 +3,13 @@ import { format, addDays, startOfWeek } from "date-fns";
 import { useAuth } from "../../context/AuthContext";
 import { useCart } from "../../hooks/useCart"; // Importa el hook de carrito
 import { useNavigate } from "react-router-dom";
-import axios from "axios";
 
 export default function BookingCalendar({ advisor }) {
   const { user } = useAuth(); // Solo para autenticación
   const { addToCart } = useCart(); // Para operaciones del carrito
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [selectedTime, setSelectedTime] = useState(null);
+  const [isProcessing, setIsProcessing] = useState(false);
   const navigate = useNavigate();
 
   const weekDays = Array.from({ length: 7 }, (_, i) =>
@@ -17,49 +17,37 @@ export default function BookingCalendar({ advisor }) {
   );
 
   const handleBooking = async () => {
+    console.log("handleBooking ejecutado");
+    if (isProcessing) return; // Evita ejecuciones múltiples
+    setIsProcessing(true);
+
     if (!user) {
       navigate("/login"); // Redirigir al inicio de sesión si no está autenticado
+      setIsProcessing(false);
       return;
     }
 
     const sessionData = {
-      advisor: advisor.id, // ID del asesor
-      client: user._id, // ID del cliente (autenticado)
-      startTime: `${selectedDate.toISOString().split("T")[0]}T${selectedTime}`, // Fecha y hora combinadas
+      advisorId: advisor.id, // ID del asesor
+      clientId: user._id, // ID del cliente (autenticado)
+      date: selectedDate.toISOString().split("T")[0], // Solo la fecha en formato "YYYY-MM-DD"
+      time: selectedTime, // Hora seleccionada
       duration: 60, // Duración predeterminada de 1 hora
-      payment: { amount: advisor.hourlyRate, status: "pending" }, // Información de pago
+      rate: advisor.hourlyRate, // Información del costo
     };
 
     try {
-      // Crear la sesión en el backend
-      const response = await axios.post(
-        "http://localhost:3001/api/session/create",
-        sessionData,
-        {
-          headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
-        }
-      );
-
-      const createdSession = response.data.session;
-
-      // Agregar la sesión creada al carrito
-      await addToCart({
-        sessionId: createdSession._id,
-        advisorId: sessionData.advisor,
-        clientId: sessionData.client,
-        date: selectedDate.toISOString().split("T")[0],
-        time: selectedTime,
-        duration: sessionData.duration,
-        rate: sessionData.payment.amount,
-      });
-
+      // Llama directamente al endpoint `addToCart` para que el backend maneje la lógica de creación
+      await addToCart(sessionData);
       alert("Reserva añadida al carrito.");
     } catch (error) {
       console.error(
-        "Error al crear la reserva:",
+        "Error al agregar la reserva al carrito:",
         error.response?.data || error
       );
-      alert("Hubo un problema al crear la reserva.");
+      alert("Hubo un problema al agregar la reserva al carrito.");
+    } finally {
+      setIsProcessing(false); // Rehabilitar el botón
     }
   };
 
@@ -125,9 +113,14 @@ export default function BookingCalendar({ advisor }) {
           </div>
           <button
             onClick={handleBooking}
-            className="mt-4 w-full bg-indigo-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+            disabled={isProcessing}
+            className={`mt-4 w-full px-4 py-2 rounded-md text-sm font-medium ${
+              isProcessing
+                ? "bg-gray-400 cursor-not-allowed"
+                : "bg-indigo-600 text-white hover:bg-indigo-700"
+            }`}
           >
-            Confirmar Reserva
+            {isProcessing ? "Procesando..." : "Confirmar Reserva"}
           </button>
         </div>
       )}

@@ -1,5 +1,3 @@
-// context/cart.jsx
-
 import { useReducer, createContext, useEffect } from "react";
 import { cartReducer, cartInitialState } from "../reducers/cartReducer";
 import axios from "axios";
@@ -22,24 +20,36 @@ function useCartReducer() {
           headers: { Authorization: `Bearer ${getUserToken()}` },
         }
       );
+
+      console.log("Datos enviados al carrito:", sessionData);
+      console.log("Respuesta del carrito:", response.data);
+
       dispatch({
         type: "ADD_TO_CART",
-        payload: response.data,
+        payload: response.data.cart.items[0], // Solo agrega el primer item al carrito
       });
     } catch (error) {
       console.error("Error al agregar al carrito:", error);
     }
   };
 
-  const removeFromCart = async (itemId) => {
+  const removeFromCart = async (sessionId) => {
     try {
-      await axios.delete(`http://localhost:3001/api/cart/${itemId}`, {
-        headers: { Authorization: `Bearer ${getUserToken()}` },
-      });
-      dispatch({
-        type: "REMOVE_FROM_CART",
-        payload: itemId,
-      });
+      const response = await axios.delete(
+        `http://localhost:3001/api/session/${sessionId}`,
+        {
+          headers: { Authorization: `Bearer ${getUserToken()}` },
+        }
+      );
+
+      if (response.status === 200) {
+        console.log("Sesión eliminada y carrito vaciado");
+
+        // Vaciar el estado local del carrito
+        dispatch({ type: "REMOVE_FROM_CART" });
+      } else {
+        console.error("Error al eliminar la sesión:", response.data.message);
+      }
     } catch (error) {
       console.error("Error al eliminar del carrito:", error);
     }
@@ -58,10 +68,11 @@ function useCartReducer() {
         }
       );
 
-      const cartItems = response.data?.cart?.items || [];
+      console.log("Carrito obtenido del backend:", response.data.cart);
+
       dispatch({
         type: "SET_CART",
-        payload: cartItems,
+        payload: response.data.cart.items || [], // Asegúrate de procesar los ítems correctamente
       });
     } catch (error) {
       console.error("Error al obtener el carrito:", error);
@@ -82,7 +93,7 @@ export function CartProvider({ children }) {
   return (
     <CartContext.Provider
       value={{
-        cart: state,
+        cart: state.cart,
         addToCart,
         removeFromCart,
         clearCart,

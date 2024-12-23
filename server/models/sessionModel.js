@@ -12,8 +12,12 @@ const sessionSchema = new mongoose.Schema(
       ref: "User",
       required: true,
     },
-    startTime: {
-      type: Date,
+    date: {
+      type: String, // Almacena la fecha en formato "YYYY-MM-DD"
+      required: true,
+    },
+    time: {
+      type: String, // Almacena la hora en formato "HH:mm"
       required: true,
     },
     duration: {

@@ -11,30 +11,26 @@ export const register = async (req, res) => {
     // Verifica si el usuario ya existe
     const existingUser = await User.findOne({ email });
     if (existingUser) {
-      console.log(existingUser);
       return res.status(400).json({ message: "Email already in use" });
     }
-
-    // Encripta la contraseña
-    const salt = await bcrypt.genSalt(10);
-    const hashedPassword = await bcrypt.hash(password, salt);
 
     // Crea el objeto con los datos del nuevo usuario
     const newUserData = new User({
       email,
-      password: hashedPassword,
+      password, // Contraseña sin encriptar, será encriptada por el middleware
       role,
       firstName,
       lastName,
     });
 
-    // Crea y guarda el nuevo usuario en la base de datos
-    const newUser = await newUserData.save();
+    // Guarda el nuevo usuario en la base de datos
+    await newUserData.save();
     console.log(newUserData);
+
     // Responde con éxito al cliente
     res
       .status(201)
-      .json({ message: "User registered successfully", user: newUser });
+      .json({ message: "User registered successfully", user: newUserData });
   } catch (error) {
     // En caso de error, responde con un mensaje de error
     res.status(500).json({ message: "Error registering user", error });
@@ -45,15 +41,24 @@ export const register = async (req, res) => {
 export const login = async (req, res) => {
   try {
     const { email, password } = req.body;
+    console.log("Intento de inicio de sesión con email:", email);
+
+    // Busca el usuario por email y verifica la contraseña en una sola línea
     const user = await User.findOne({ email });
     if (!user || !(await bcrypt.compare(password, user.password))) {
+      console.log("Credenciales inválidas");
       return res.status(401).json({ message: "Invalid credentials" });
     }
+
+    // Genera el token JWT
     const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
       expiresIn: "1h",
     });
+    console.log("Inicio de sesión exitoso para usuario:", user._id);
+
     res.json({ token: token, user: user });
   } catch (error) {
+    console.error("Error en el proceso de inicio de sesión:", error);
     res.status(400).json({ message: "Error logging in", error });
   }
 };

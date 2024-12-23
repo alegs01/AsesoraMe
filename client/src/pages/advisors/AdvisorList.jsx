@@ -5,31 +5,6 @@ import axios from "axios";
 
 const apiUrl = import.meta.env.VITE_APP_API_URL;
 
-/* const MOCK_ADVISORS = [
-  {
-    id: 1,
-    name: "Carlos López",
-    specialties: ["Planificación Financiera", "Inversiones"],
-    rating: 4.8,
-    reviewCount: 124,
-    hourlyRate: 25.0,
-    avatar:
-      "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80",
-    bio: "Asesor financiero certificado con más de 10 años de experiencia en gestión de inversiones y planificación para el retiro.",
-  },
-  {
-    id: 2,
-    name: "María Fernández",
-    specialties: ["Desarrollo Profesional", "Liderazgo"],
-    rating: 4.9,
-    reviewCount: 89,
-    hourlyRate: 50.0,
-    avatar:
-      "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80",
-    bio: "Coach ejecutiva especializada en transiciones de carrera y desarrollo de liderazgo.",
-  },
-]; */
-
 export default function AdvisorList() {
   const [advisors, setAdvisors] = useState([]);
   const [filters, setFilters] = useState({
@@ -42,8 +17,6 @@ export default function AdvisorList() {
     const fetchAdvisors = async () => {
       try {
         const apiResponse = await axios.get(`${apiUrl}/api/user/advisors`);
-
-        console.log("API Response: ", apiResponse); // Ver respuesta de la API
 
         const apiAdvisors =
           apiResponse?.data && Array.isArray(apiResponse.data)
@@ -60,27 +33,40 @@ export default function AdvisorList() {
             : [];
 
         setAdvisors(apiAdvisors);
-        console.log("Advisors state after setAdvisors: ", apiAdvisors); // Ver estado después de actualizar
       } catch (error) {
         console.error("Error al obtener los asesores: ", error);
       }
     };
 
     fetchAdvisors();
-  }, []); // Solo se ejecuta una vez cuando el componente se monta
+  }, []);
 
-  // Filtrar los asesores en función de los filtros aplicados
+  // Lógica de filtrado
   const filteredAdvisors = advisors.filter((advisor) => {
-    if (Array.isArray(advisor.specialties)) {
-      const matchesSpecialty = advisor.specialties.some((specialty) =>
-        specialty.toLowerCase().includes(filters.specialty.toLowerCase())
-      );
-      return matchesSpecialty;
+    // Filtrar por especialidad
+    if (filters.specialty && !advisor.specialties.includes(filters.specialty)) {
+      return false;
     }
-    return false;
-  });
 
-  console.log("Filtered Advisors: ", filteredAdvisors); // Ver los asesores filtrados
+    // Filtrar por rango de precios
+    if (filters.priceRange) {
+      const [minPrice, maxPrice] = filters.priceRange.split("-").map(Number);
+      const advisorPrice = advisor.hourlyRate;
+      if (
+        (minPrice && advisorPrice < minPrice) ||
+        (maxPrice && advisorPrice > maxPrice)
+      ) {
+        return false;
+      }
+    }
+
+    // Filtrar por calificación mínima
+    if (filters.rating && advisor.rating < filters.rating) {
+      return false;
+    }
+
+    return true;
+  });
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -94,10 +80,13 @@ export default function AdvisorList() {
             Asesores Disponibles
           </h1>
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {filteredAdvisors.map((advisor) => {
-              console.log("Rendering advisor: ", advisor); // Ver cada asesor renderizado
-              return <AdvisorCard key={advisor.id} advisor={advisor} />;
-            })}
+            {filteredAdvisors.length > 0 ? (
+              filteredAdvisors.map((advisor) => (
+                <AdvisorCard key={advisor.id} advisor={advisor} />
+              ))
+            ) : (
+              <p className="text-gray-500">No se encontraron asesores.</p>
+            )}
           </div>
         </div>
       </div>

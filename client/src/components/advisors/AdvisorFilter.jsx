@@ -14,7 +14,6 @@ export default function AdvisorFilter({ filters, setFilters }) {
     { label: "Menos de $50/hora", value: "0-50" },
     { label: "$50-100/hora", value: "50-100" },
     { label: "$100-200/hora", value: "100-200" },
-    { label: "Más de $200/hora", value: "200+" },
   ];
 
   return (

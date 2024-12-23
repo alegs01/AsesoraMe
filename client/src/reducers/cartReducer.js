@@ -1,18 +1,23 @@
-// src/reducers/cartReducer.js
-
-export const cartInitialState = []; // Estado inicial del carrito
-
 export const cartReducer = (state, action) => {
   switch (action.type) {
     case "ADD_TO_CART":
-      return [...state, action.payload];
+      console.log("ADD_TO_CART llamado con payload:", action.payload);
+      return { ...state, cart: [...state.cart, action.payload] };
+
     case "REMOVE_FROM_CART":
-      return state.filter((item) => item._id !== action.payload);
+      return { ...state, cart: [] };
+
     case "CLEAR_CART":
-      return [];
+      return { ...state, cart: [] };
+
     case "SET_CART":
-      return action.payload;
+      return { ...state, cart: action.payload.items || [] }; // Maneja items correctamente
+
     default:
       return state;
   }
+};
+
+export const cartInitialState = {
+  cart: [],
 };
