@@ -41,11 +41,7 @@ export default function AdvisorList() {
   useEffect(() => {
     const fetchAdvisors = async () => {
       try {
-        const apiResponse = await axios.get(`${apiUrl}/api/user/advisors`, {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem("token")}`,
-          },
-        });
+        const apiResponse = await axios.get(`${apiUrl}/api/user/advisors`);
 
         console.log("API Response: ", apiResponse); // Ver respuesta de la API
 

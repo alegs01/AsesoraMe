@@ -287,7 +287,7 @@ router.get("/", authMiddleware, getAllUsers);
 
 router.get("/id/:id", authMiddleware, userById);
 
-router.get("/advisors", authMiddleware, getAdvisors);
+router.get("/advisors", getAdvisors);
 
 /**
  * @swagger

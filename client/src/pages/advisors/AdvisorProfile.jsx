@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom"; // Importar useNavigate
 import { StarIcon } from "@heroicons/react/20/solid";
 import BookingCalendar from "../../components/booking/BookingCalendar";
 import ReviewList from "../../components/reviews/ReviewList";
@@ -9,6 +9,7 @@ const apiUrl = import.meta.env.VITE_APP_API_URL;
 
 export default function AdvisorProfile() {
   const { id } = useParams(); // Obtener el ID del asesor desde la URL
+  const navigate = useNavigate(); // Hook para redireccionar
   const [advisor, setAdvisor] = useState(null);
   const [showBooking, setShowBooking] = useState(false);
 
@@ -42,6 +43,17 @@ export default function AdvisorProfile() {
 
     fetchAdvisor();
   }, [id]);
+
+  const handleBookingClick = () => {
+    const token = localStorage.getItem("token");
+    if (!token) {
+      // Si no está autenticado, redirigir al inicio de sesión
+      navigate("/login");
+      return;
+    }
+    // Mostrar la ventana de reserva si está autenticado
+    setShowBooking(!showBooking);
+  };
 
   if (!advisor) {
     return <p className="text-center text-gray-500">Cargando perfil...</p>;
@@ -95,7 +107,7 @@ export default function AdvisorProfile() {
 
             <div className="mt-6">
               <button
-                onClick={() => setShowBooking(!showBooking)}
+                onClick={handleBookingClick} // Usar la nueva función
                 className="w-full md:w-auto bg-indigo-600 text-white px-6 py-3 rounded-md font-medium hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
               >
                 Reservar una sesión
