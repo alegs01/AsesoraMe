@@ -14,6 +14,22 @@ const cartSchema = new mongoose.Schema(
           ref: "Session",
           required: true,
         },
+        date: {
+          type: String, // Fecha como string para simplicidad
+          required: true,
+        },
+        time: {
+          type: String, // Hora como string
+          required: true,
+        },
+        duration: {
+          type: Number, // Duración en minutos
+          required: true,
+        },
+        rate: {
+          type: Number, // Precio por hora
+          required: true,
+        },
         quantity: {
           type: Number,
           default: 1,

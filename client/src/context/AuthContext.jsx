@@ -2,8 +2,8 @@ import { createContext, useContext, useReducer, useEffect } from "react";
 import axios from "axios";
 import { jwtDecode } from "jwt-decode";
 
-// Reducer para manejar el estado global
-const reducer = (state, action) => {
+// Reducer para manejar el estado global de autenticación
+const authReducer = (state, action) => {
   switch (action.type) {
     case "LOGIN_EXITOSO":
       localStorage.setItem("token", action.payload.token);
@@ -46,8 +46,8 @@ const reducer = (state, action) => {
   }
 };
 
-// Estado inicial
-const initialState = {
+// Estado inicial del contexto de autenticación
+const initialAuthState = {
   user: null,
   authStatus: false,
   sessionURL: null,
@@ -55,16 +55,14 @@ const initialState = {
 };
 
 // Crear contexto
-const AuthContext = createContext(initialState);
+const AuthContext = createContext(initialAuthState);
 
-// Proveedor de contexto
+// Proveedor del contexto de autenticación
 export const AuthProvider = ({ children }) => {
-  const [state, dispatch] = useReducer(reducer, initialState);
+  const [state, dispatch] = useReducer(authReducer, initialAuthState);
 
   // Obtener token desde localStorage
-  const getUserToken = () => {
-    return localStorage.getItem("token");
-  };
+  const getUserToken = () => localStorage.getItem("token");
 
   // Manejar inicio de sesión
   const Login = async (data) => {
@@ -77,6 +75,8 @@ export const AuthProvider = ({ children }) => {
         type: "LOGIN_EXITOSO",
         payload: { token: response.data.token, user: response.data.user },
       });
+
+      console.log("Usuario autenticado:", response.data.user);
     } catch (error) {
       console.error("Error al iniciar sesión:", error);
       return error.response?.data?.message || "Error desconocido.";
@@ -119,13 +119,13 @@ export const AuthProvider = ({ children }) => {
     const token = getUserToken();
 
     if (token) {
-      // Establecer el token en los encabezados por defecto
       axios.defaults.headers["Authorization"] = `Bearer ${token}`;
+      console.log("Token cargado desde localStorage:", token);
 
       (async () => {
         try {
-          // Decodificar el token para obtener el ID del usuario (necesitarás instalar y usar 'jwt-decode')
           const decodedToken = jwtDecode(token);
+          console.log("Token decodificado:", decodedToken);
 
           if (!decodedToken?.id) {
             throw new Error("Token inválido o sin ID de usuario.");
@@ -135,12 +135,10 @@ export const AuthProvider = ({ children }) => {
             `http://localhost:3001/api/user/id/${decodedToken.id}`
           );
 
-          // Guardar los datos del usuario en el estado global
           dispatch({ type: "GET_DATA_USER", payload: response.data });
+          console.log("Estado global actualizado con el usuario:", state.user);
         } catch (error) {
           console.error("Error al validar usuario:", error);
-
-          // Si hay un error, cerrar la sesión
           Logout();
         }
       })();
@@ -162,7 +160,5 @@ export const AuthProvider = ({ children }) => {
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
 
-// Hook para consumir el contexto
-export const useAuth = () => {
-  return useContext(AuthContext);
-};
+// Hook para consumir el contexto de autenticación
+export const useAuth = () => useContext(AuthContext);

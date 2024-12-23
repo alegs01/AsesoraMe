@@ -7,39 +7,27 @@ dotenv.config();
 
 // Agregar una sesión al carrito
 export const addToCart = async (req, res) => {
-  const { sessionId } = req.body;
-  const userId = req.user?.id;
+  const { advisorId, clientId, date, time, duration, rate } = req.body;
 
-  if (!sessionId) {
-    return res.status(400).json({ message: "Falta el ID de la sesión" });
+  // Validar datos necesarios
+  if (!advisorId || !clientId || !date || !time || !duration || !rate) {
+    return res.status(400).json({ message: "Faltan datos obligatorios" });
   }
 
   try {
-    // Buscar la sesión para asegurarse de que existe
-    const session = await Session.findById(sessionId);
-
-    if (!session) {
-      return res.status(404).json({ message: "Sesión no encontrada" });
-    }
-
-    // Verificar que la sesión tenga un precio válido en payment.amount
-    const price = session.payment?.amount;
-    if (!price || typeof price !== "number") {
-      return res
-        .status(400)
-        .json({ message: "La sesión no tiene un precio válido" });
-    }
-
     // Buscar o crear un carrito para el usuario
-    let cart = await Cart.findOne({ user: userId });
+    let cart = await Cart.findOne({ user: clientId });
 
     if (!cart) {
-      cart = await Cart.create({ user: userId, items: [] });
+      cart = await Cart.create({ user: clientId, items: [], totalPrice: 0 });
     }
 
-    // Verificar si la sesión ya está en el carrito
+    // Verificar si ya existe una entrada similar en el carrito
     const isSessionInCart = cart.items.some(
-      (item) => item.sessionId.toString() === sessionId
+      (item) =>
+        item.date === date &&
+        item.time === time &&
+        item.sessionId.toString() === advisorId
     );
 
     if (isSessionInCart) {
@@ -48,26 +36,30 @@ export const addToCart = async (req, res) => {
         .json({ message: "La sesión ya está en el carrito" });
     }
 
-    // Agregar la sesión al carrito
+    // Agregar la nueva entrada al carrito
     cart.items.push({
-      sessionId: session._id,
+      sessionId: advisorId,
+      date,
+      time,
+      duration,
+      rate,
       quantity: 1,
     });
 
     // Recalcular el precio total
-    cart.totalPrice = cart.items.reduce((total, item) => {
-      const itemSession =
-        item.sessionId.toString() === session._id.toString() ? price : 0;
-      return total + item.quantity * itemSession;
-    }, 0);
+    cart.totalPrice = cart.items.reduce(
+      (total, item) => total + item.quantity * item.rate,
+      0
+    );
 
     await cart.save();
 
     res.status(200).json({
-      message: "Sesión agregada al carrito",
+      message: "Reserva añadida al carrito",
       cart,
     });
   } catch (error) {
+    console.error("Error al agregar al carrito:", error);
     res
       .status(500)
       .json({ message: "Error al agregar la sesión al carrito", error });
@@ -80,7 +72,9 @@ export const getCart = async (req, res) => {
 
   try {
     // Buscar el carrito del usuario
-    const cart = await Cart.findOne({ user: userId }).populate("items.session");
+    const cart = await Cart.findOne({ user: userId }).populate(
+      "items.sessionId"
+    );
 
     if (!cart) {
       return res.status(404).json({ message: "Carrito no encontrado" });
@@ -94,10 +88,14 @@ export const getCart = async (req, res) => {
 
 // Eliminar una sesión del carrito
 export const removeFromCart = async (req, res) => {
-  const { sessionId } = req.body;
-  const userId = req.user?.id;
+  const sessionId = req.body.sessionId || req.params.id;
+
+  console.log("Request received to remove from cart");
+  console.log("UserId:", userId); // Verificar que userId se esté configurando correctamente
+  console.log("SessionId:", sessionId); // Verificar que sessionId se recibe correctamente
 
   try {
+    // Buscar el carrito del usuario
     const cart = await Cart.findOne({ user: userId });
 
     if (!cart) {
@@ -117,14 +115,16 @@ export const removeFromCart = async (req, res) => {
     }
 
     // Recalcular el precio total
-    cart.totalPrice = cart.items.reduce((total, item) => {
-      return total + item.quantity * (item.session?.payment?.amount || 0);
-    }, 0);
+    cart.totalPrice = cart.items.reduce(
+      (total, item) => total + item.quantity * item.rate,
+      0
+    );
 
     await cart.save();
 
     res.status(200).json({ message: "Sesión eliminada del carrito", cart });
   } catch (error) {
+    console.error("Error al eliminar la sesión del carrito:", error);
     res
       .status(500)
       .json({ message: "Error al eliminar la sesión del carrito", error });

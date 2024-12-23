@@ -132,7 +132,7 @@ router.post("/cart", authMiddleware, addToCart);
  *       404:
  *         description: sesion no encontrada en el carrito.
  */
-router.delete("/cart", authMiddleware, removeFromCart);
+router.delete("/cart/:id", authMiddleware, removeFromCart);
 
 /**
  * @swagger
