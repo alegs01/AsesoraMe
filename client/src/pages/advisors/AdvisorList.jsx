@@ -54,7 +54,7 @@ export default function AdvisorList() {
                 rating: advisor.profile.rating,
                 reviewCount: advisor.profile.reviewCount,
                 hourlyRate: advisor.profile.hourlyRate,
-                avatar: advisor.profile.avatar || "default-avatar-url", // Añadir avatar por defecto
+                avatar: advisor.profile.picture,
                 bio: advisor.profile.bio,
               }))
             : [];
